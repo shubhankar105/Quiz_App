@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Create a Quiz</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet">
+  <style>
+    body {
+      background-color: #f0f8ff;
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+    .navbar { background-color: #0d6efd; }
+    .navbar-brand, .navbar-text { color: #fff !important; }
+    .container { margin-top: 30px; flex: 1; }
+    .footer {
+      background-color: #0d6efd; color: #fff; text-align: center;
+      padding: 10px 0; margin-top: auto;
+    }
+    .card-header {
+      background-color: #e9f2ff; border-bottom: 1px solid #007bff;
+    }
+    .card { border: 1px solid #007bff; margin-bottom: 20px; }
+    .question-block {
+      border: 1px solid #ddd; padding: 15px;
+      margin-bottom: 10px; position: relative;
+    }
+    .remove-question-btn {
+      position: absolute; top: 10px; right: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Create Quiz</a>
+    <span class="navbar-text">Up to 20 questions</span>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="text-end mb-3">
+    <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+  </div>
+
+
+  <div class="card">
+    <div class="card-header">
+      <h4>Create a New Quiz</h4>
+    </div>
+    <div class="card-body">
+      <div class="mb-3">
+        <label for="quizTitle" class="form-label">Quiz Title</label>
+        <input type="text" id="quizTitle" class="form-control" />
+      </div>
+      <h5>Questions (1 to 20):</h5>
+      <div id="questionsContainer"></div>
+      <button id="addQuestionBtn" class="btn btn-outline-primary mb-3">Add Question</button>
+      <br />
+      <button id="createQuizBtn" class="btn btn-primary">Create Quiz</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>&copy; 2025 Quiz App</p>
+</div>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+</script>
+<script>
+let accessToken = localStorage.getItem('accessToken');
+if (!accessToken) {
+  window.location.href = '/login';
+}
+
+// ----------- DOM Refs -----------
+const logoutBtn = document.getElementById('logoutBtn');
+const quizTitleInput = document.getElementById('quizTitle');
+const questionsContainer = document.getElementById('questionsContainer');
+const addQuestionBtn = document.getElementById('addQuestionBtn');
+const createQuizBtn = document.getElementById('createQuizBtn');
+
+// ---------- Logout -------------
+logoutBtn.addEventListener('click', () => {
+  localStorage.removeItem('accessToken');
+  window.location.href = '/login';
+});
+
+// ---------- Add question block -------------
+function createQuestionBlock(questionData = null) {
+  const block = document.createElement('div');
+  block.className = 'question-block';
+  block.innerHTML = `
+    <button class="btn btn-sm btn-danger remove-question-btn" type="button">X</button>
+    <div class="mb-2">
+      <label class="form-label">Question Text</label>
+      <textarea class="form-control question-text" rows="2"></textarea>
+    </div>
+    <div class="mb-2">
+      <label class="form-label">Option 1</label>
+      <input type="text" class="form-control option1" />
+    </div>
+    <div class="mb-2">
+      <label class="form-label">Option 2</label>
+      <input type="text" class="form-control option2" />
+    </div>
+    <div class="mb-2">
+      <label class="form-label">Option 3</label>
+      <input type="text" class="form-control option3" />
+    </div>
+    <div class="mb-2">
+      <label class="form-label">Option 4</label>
+      <input type="text" class="form-control option4" />
+    </div>
+    <div class="mb-2">
+      <label class="form-label">Correct Answer (1-4)</label>
+      <select class="form-select correct-answer">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </div>
+  `;
+  if (questionData) {
+    block.querySelector('.question-text').value = questionData.questionText || '';
+    block.querySelector('.option1').value = questionData.options?.[0] || '';
+    block.querySelector('.option2').value = questionData.options?.[1] || '';
+    block.querySelector('.option3').value = questionData.options?.[2] || '';
+    block.querySelector('.option4').value = questionData.options?.[3] || '';
+    block.querySelector('.correct-answer').value = questionData.correctAnswer || '1';
+  }
+  block.querySelector('.remove-question-btn').addEventListener('click', () => {
+    block.remove();
+  });
+  return block;
+}
+
+addQuestionBtn.addEventListener('click', () => {
+  // Limit 20
+  const currentBlocks = document.querySelectorAll('.question-block').length;
+  if (currentBlocks >= 20) {
+    alert('You can only add up to 20 questions.');
+    return;
+  }
+  questionsContainer.appendChild(createQuestionBlock());
+});
+
+// ---------- Collect questions into an array ----------
+function collectQuestions() {
+  const blocks = document.querySelectorAll('.question-block');
+  const questions = [];
+  blocks.forEach(b => {
+    const questionText = b.querySelector('.question-text').value.trim();
+    const option1 = b.querySelector('.option1').value.trim();
+    const option2 = b.querySelector('.option2').value.trim();
+    const option3 = b.querySelector('.option3').value.trim();
+    const option4 = b.querySelector('.option4').value.trim();
+    const correct = parseInt(b.querySelector('.correct-answer').value, 10);
+
+    questions.push({
+      questionText,
+      options: [option1, option2, option3, option4],
+      correctAnswer: correct
+    });
+  });
+  return questions;
+}
+
+// ---------- Create Quiz -------------
+createQuizBtn.addEventListener('click', async () => {
+  const title = quizTitleInput.value.trim();
+  const questions = collectQuestions();
+
+  if (!title) {
+    alert('Please enter a quiz title.');
+    return;
+  }
+  if (questions.length === 0) {
+    alert('Please add at least one question.');
+    return;
+  }
+  if (questions.length > 20) {
+    alert('You can only have up to 20 questions.');
+    return;
+  }
+
+  try {
+    const resp = await fetch('/quiz', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ title, questions })
+    });
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      alert(`Error: ${data.message ?? resp.statusText}`);
+      return;
+    }
+    // On success, go to the "view quiz" page
+    window.location.href = '/viewquiz/' + data.quiz_id;
+
+  } catch (err) {
+    alert(`Network error: ${err}`);
+  }
+});
+</script>
+</body>
+</html>
